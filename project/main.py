@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser.add_argument("--epochs", type=int, default=200, help="Number of epochs to train")
     parser.add_argument("--iterations", type=int, default=16, help="Number of iterations for each epoch")
     parser.add_argument("--noise_factor", type=float, default=0.0, help="Number of epochs to train")
-    parser.add_argument("--model_name", type=str, default="srcnn", help="Weighting of L1 Loss")
+    parser.add_argument("--model_name", type=str, default="conv_rnn", help="Weighting of L1 Loss")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate")
     parser.add_argument("--model_type", type=str, default="srcnn", help="Model type")
 
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     train_params = {
         'epochs': args.epochs,
         'lr':args.lr,
-        'batch_size': 8,
+        'batch_size': 1,
         'pin_memory':False,
         'iterations': args.iterations
     }
