@@ -41,7 +41,7 @@ class convLSTM(nn.Module):
             stride=1,
             dilation=1,
             bias=self.bias,
-            padding=self.padding
+            padding=(self.hidden_kernel_size // 2)
             )
 
         def reset_params(self):
