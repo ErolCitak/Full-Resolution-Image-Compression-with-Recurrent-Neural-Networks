@@ -79,7 +79,7 @@ class Encoder(nn.Module):
             hidden_channels=256,
             kernel_size=3,
             stride=2,
-            pading=1,
+            padding=1,
             dilation=1,
             hidden_kernel_size=1,
             bias=False
@@ -89,7 +89,7 @@ class Encoder(nn.Module):
             hidden_channels=512,
             kernel_size=3,
             stride=2,
-            pading=1,
+            padding=1,
             dilation=1,
             hidden_kernel_size=1,
             bias=False
@@ -99,7 +99,7 @@ class Encoder(nn.Module):
             hidden_channels=512,
             kernel_size=3,
             stride=2,
-            pading=1,
+            padding=1,
             dilation=1,
             hidden_kernel_size=1,
             bias=False
@@ -149,7 +149,7 @@ class Decoder(nn.Module):
             hidden_channels=512,
             kernel_size=2,
             stride=1,
-            pading=1,
+            padding=1,
             dilation=1,
             hidden_kernel_size=1,
             bias=False
@@ -159,7 +159,7 @@ class Decoder(nn.Module):
             hidden_channels=512,
             kernel_size=3,
             stride=1,
-            pading=1,
+            padding=1,
             dilation=1,
             hidden_kernel_size=1,
             bias=False
@@ -169,7 +169,7 @@ class Decoder(nn.Module):
             hidden_channels=256,
             kernel_size=3,
             stride=1,
-            pading=1,
+            padding=1,
             dilation=1,
             hidden_kernel_size=3,
             bias=False
@@ -179,7 +179,7 @@ class Decoder(nn.Module):
             hidden_channels=128,
             kernel_size=3,
             stride=1,
-            pading=1,
+            padding=1,
             dilation=1,
             hidden_kernel_size=3,
             bias=False
@@ -211,5 +211,5 @@ class Decoder(nn.Module):
         x = hidden4[0]
         x = F.pixel_shuffle(x, 2)
 
-        out = self.tanh(self.conv2(x))
+        out = self.tanh(self.conv2(x))/2
         return out, hidden1, hidden2, hidden3, hidden4
