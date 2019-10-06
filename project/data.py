@@ -5,6 +5,7 @@ from PIL import Image
 import os
 import os.path
 
+
 class MyCoco(Dataset):
     """`MS Coco Detection <http://mscoco.org/dataset/#detections-challenge2016>`_ Dataset.
 
@@ -19,7 +20,8 @@ class MyCoco(Dataset):
             and returns a transformed version.
     """
 
-    def __init__(self, root, annFile, noise_factor=0, input_transform=None, target_transform=None, transforms=None):
+    def __init__(self, root, annFile, noise_factor=0,
+                 input_transform=None, target_transform=None, transforms=None):
         super(MyCoco, self).__init__()
         from pycocotools.coco import COCO
         self.root = root
@@ -56,7 +58,6 @@ class MyCoco(Dataset):
             target = self.target_transform(target)
 
         return input, target
-
 
     def __len__(self):
         return len(self.ids)

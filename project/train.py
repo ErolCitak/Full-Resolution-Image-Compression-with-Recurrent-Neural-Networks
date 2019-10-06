@@ -15,9 +15,12 @@ def img_normalize(imgs):
 
 
 def save_models(args, encoder, binarizer, decoder):
-    torch.save(encoder.state_dict, 'save/{model_name}_e'.format(model_name=args.model_name))
-    torch.save(binarizer.state_dict, 'save/{model_name}_b'.format(model_name=args.model_name))
-    torch.save(decoder.state_dict, 'save/{model_name}_d'.format(model_name=args.model_name))
+    torch.save(encoder.state_dict,
+               'save/{model_name}_e'.format(model_name=args.model_name))
+    torch.save(binarizer.state_dict,
+               'save/{model_name}_b'.format(model_name=args.model_name))
+    torch.save(decoder.state_dict,
+               'save/{model_name}_d'.format(model_name=args.model_name))
 
 
 def train(train_params, args, train_loader, val_loader):
@@ -25,16 +28,20 @@ def train(train_params, args, train_loader, val_loader):
     binarizer = Binarizer().to(args.device)
     decoder = Decoder().to(args.device)
 
-    enc_optimizer = torch.optim.Adam(encoder.parameters(), lr = train_params['lr'])
-    dec_optimizer = torch.optim.Adam(decoder.parameters(), lr = train_params['lr'])
-    binarizer_optimizer = torch.optim.Adam(binarizer.parameters(), lr = train_params['lr'])
+    enc_optimizer = torch.optim.Adam(
+        encoder.parameters(), lr=train_params['lr'])
+    dec_optimizer = torch.optim.Adam(
+        decoder.parameters(), lr=train_params['lr'])
+    binarizer_optimizer = torch.optim.Adam(
+        binarizer.parameters(), lr=train_params['lr'])
 
     l1loss = torch.nn.L1Loss()
 
-    best_loss, best_encoder, best_binarizer, best_decoder = float('inf'), None, None, None
+    best_loss = float('inf')
+    best_encoder, best_binarizer, best_decoder = None, None, None
     full_patience = 10
     patience = full_patience
-    batch_size=train_params['batch_size']
+    batch_size = train_params['batch_size']
     writer = SummaryWriter('log/{}'.format(args.model_name))
     log_interval = int(len(train_loader) / batch_size * 0.05)
     val_interval = int(len(train_loader) / batch_size)
@@ -48,21 +55,34 @@ def train(train_params, args, train_loader, val_loader):
             sample_x = sample_x.to(args.device)
             sample_y = sample_y.to(args.device)
 
-            encoder_h1 = (torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device),
-                          torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device))
-            encoder_h2 = (torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device),
-                          torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
-            encoder_h3 = (torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device),
-                          torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device))
+            encoder_h1 = (
+                torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device),
+                torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device)
+            )
+            encoder_h2 = (
+                torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device),
+                torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
+            encoder_h3 = (
+                torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device),
+                torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device)
+            )
 
-            decoder_h1 = (torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device),
-                          torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device))
-            decoder_h2 = (torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device),
-                          torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
-            decoder_h3 = (torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device),
-                          torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device))
-            decoder_h4 = (torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device),
-                          torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device))
+            decoder_h1 = (
+                torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device),
+                torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device)
+            )
+            decoder_h2 = (
+                torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device),
+                torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device)
+            )
+            decoder_h3 = (
+                torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device),
+                torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device)
+            )
+            decoder_h4 = (
+                torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device),
+                torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device)
+            )
 
             losses = []
             enc_optimizer.zero_grad()
@@ -72,17 +92,18 @@ def train(train_params, args, train_loader, val_loader):
             residual = sample_x
             for i in range(train_params['iterations']):
                 # print('input:', residual.shape)
-                x, encoder_h1, encoder_h2, encoder_h3 = encoder(residual, encoder_h1, encoder_h2, encoder_h3)
+                x, encoder_h1, encoder_h2, encoder_h3 = encoder(
+                    residual, encoder_h1, encoder_h2, encoder_h3)
                 x = binarizer(x)
-                
-                # print('\ncompressed:', x.shape, x.detach().numpy().astype(np.bool).nbytes)
+                # nbytes = x.detach().numpy().astype(np.bool).nbytes
+                # print('\ncompressed:', x.shape, n_bytes)
                 # print()
-                output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
+                output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(
+                    x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
                 # print('output:', output.shape)
 
                 residual = residual - output
                 losses.append(residual.abs().mean())
-
 
             loss = sum(losses) / train_params['iterations']
             loss.backward()
@@ -102,25 +123,39 @@ def train(train_params, args, train_loader, val_loader):
                     sample_x = sample_x.to(args.device)
                     sample_y = sample_y.to(args.device)
 
-                    encoder_h1 = (torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device),
-                                  torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device))
-                    encoder_h2 = (torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device),
-                                  torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
-                    encoder_h3 = (torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device),
-                                  torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device))
+                    encoder_h1 = (
+                        torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device),
+                        torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device)
+                    )
+                    encoder_h2 = (
+                        torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device),
+                        torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
+                    encoder_h3 = (
+                        torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device),
+                        torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device)
+                    )
 
-                    decoder_h1 = (torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device),
-                                  torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device))
-                    decoder_h2 = (torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device),
-                                  torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
-                    decoder_h3 = (torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device),
-                                  torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device))
-                    decoder_h4 = (torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device),
-                                  torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device))
-
-                    x, encoder_h1, encoder_h2, encoder_h3 = encoder(sample_x, encoder_h1, encoder_h2, encoder_h3)
+                    decoder_h1 = (
+                        torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device),
+                        torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device)
+                    )
+                    decoder_h2 = (
+                        torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device),
+                        torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device)
+                    )
+                    decoder_h3 = (
+                        torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device),
+                        torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device)
+                    )
+                    decoder_h4 = (
+                        torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device),
+                        torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device)
+                    )
+                    x, encoder_h1, encoder_h2, encoder_h3 = encoder(
+                        sample_x, encoder_h1, encoder_h2, encoder_h3)
                     x = binarizer(x)
-                    output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
+                    output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(
+                        x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
 
                     val_loss += l1loss(output, sample_x)
                 writer.add_scalar('val_loss', val_loss / len(val_loader), idx)

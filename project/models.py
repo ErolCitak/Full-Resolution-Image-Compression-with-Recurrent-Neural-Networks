@@ -2,16 +2,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 
+
 class ConvLSTM(nn.Module):
     def __init__(self,
-            in_channels,
-            hidden_channels,
-            kernel_size,
-            stride,
-            padding,
-            dilation,
-            hidden_kernel_size,
-            bias=True):
+                 in_channels,
+                 hidden_channels,
+                 kernel_size,
+                 stride,
+                 padding,
+                 dilation,
+                 hidden_kernel_size,
+                 bias=True):
         super(ConvLSTM, self).__init__()
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
@@ -56,7 +57,7 @@ class ConvLSTM(nn.Module):
         # print("convW(x)", self.convW(x).shape)
         # print("convU(hx)", self.convU(hx).shape)
         gates = self.convW(x) + self.convU(hx)
-        fgate, igate, ogate, jgate = gates.chunk(4,1)
+        fgate, igate, ogate, jgate = gates.chunk(4, 1)
         fgate = self.sigmoid(fgate)
         igate = self.sigmoid(igate)
         ogate = self.sigmoid(ogate)
@@ -68,11 +69,10 @@ class ConvLSTM(nn.Module):
         ht = ogate * self.tanh(ct)
         return ht, ct
 
+
 class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
-
-
         self.conv = nn.Conv2d(
             in_channels=3,
             out_channels=64,
@@ -119,6 +119,7 @@ class Encoder(nn.Module):
         hidden3 = self.ConvLSTM3(hidden2[0], hidden3)
         return hidden3[0], hidden1, hidden2, hidden3
 
+
 class Binarizer(nn.Module):
     def __init__(self, in_channels=512, out_channels=25):
         super(Binarizer, self).__init__()
@@ -136,6 +137,7 @@ class Binarizer(nn.Module):
         out = self.Conv(x)
         out = self.tanh(out)
         return out.sign()
+
 
 class Decoder(nn.Module):
     def __init__(self):
