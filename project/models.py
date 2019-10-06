@@ -1,5 +1,6 @@
 import torchvision.models as models
 import torch.nn as nn
+import torch.nn.functional as F
 
 class ConvLSTM(nn.Module):
     def __init__(self,
@@ -37,12 +38,11 @@ class ConvLSTM(nn.Module):
         self.convU = nn.Conv2d(
             in_channels=self.hidden_channels,
             out_channels=self.gate_channels,
-            kernel_size=self.kernel_size,
+            kernel_size=self.hidden_kernel_size,
             stride=1,
             dilation=1,
             bias=self.bias,
-            # padding=(self.hidden_kernel_size // 2)
-            padding=self.padding
+            padding=(self.hidden_kernel_size // 2)
             )
 
     def reset_params(self):
@@ -51,10 +51,10 @@ class ConvLSTM(nn.Module):
 
     def forward(self, x, hidden):
         hx, cx = hidden
-        print("before X", x.shape)
-        print("before HIDDEN", hx.shape)
-        print("X", self.convW(x).shape)
-        print("HIDDEN", self.convU(hx).shape)
+        # print("x", x.shape)
+        # print("hx", hx.shape)
+        # print("convW(x)", self.convW(x).shape)
+        # print("convU(hx)", self.convU(hx).shape)
         gates = self.convW(x) + self.convU(hx)
         fgate, igate, ogate, jgate = gates.chunk(4,1)
         fgate = self.sigmoid(fgate)
@@ -62,7 +62,8 @@ class ConvLSTM(nn.Module):
         ogate = self.sigmoid(ogate)
         jgate = self.tanh(jgate)
 
-        print(fgate.shape, cx.shape)
+        # print("fgate:", fgate.shape, " cx:", cx.shape)
+        # print()
         ct = fgate * cx + igate * jgate
         ht = ogate * self.tanh(ct)
         return ht, ct
@@ -72,7 +73,7 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
 
 
-        self.ConvConv = nn.Conv2d(
+        self.conv = nn.Conv2d(
             in_channels=3,
             out_channels=64,
             kernel_size=3,
@@ -112,14 +113,14 @@ class Encoder(nn.Module):
             )
 
     def forward(self, x, hidden1, hidden2, hidden3):
-        out = self.ConvConv(x)
+        out = self.conv(x)
         hidden1 = self.ConvLSTM1(out, hidden1)
         hidden2 = self.ConvLSTM2(hidden1[0], hidden2)
         hidden3 = self.ConvLSTM3(hidden2[0], hidden3)
         return hidden3[0], hidden1, hidden2, hidden3
 
 class Binarizer(nn.Module):
-    def __init__(self, in_channels=512, out_channels=30):
+    def __init__(self, in_channels=512, out_channels=25):
         super(Binarizer, self).__init__()
         self.Conv = nn.Conv2d(
             in_channels=in_channels,
@@ -143,7 +144,7 @@ class Decoder(nn.Module):
         self.tanh = nn.Tanh()
 
         self.conv1 = nn.Conv2d(
-            in_channels=30,
+            in_channels=25,
             out_channels=512,
             kernel_size=1,
             stride=1,
@@ -153,7 +154,7 @@ class Decoder(nn.Module):
         self.ConvLSTM1 = ConvLSTM(
             in_channels=512,
             hidden_channels=512,
-            kernel_size=2,
+            kernel_size=3,
             stride=1,
             padding=1,
             dilation=1,
@@ -213,7 +214,7 @@ class Decoder(nn.Module):
         x = hidden3[0]
         x = F.pixel_shuffle(x, 2)
 
-        hidden4 = self.ConvLSTM3(x, hidden4)
+        hidden4 = self.ConvLSTM4(x, hidden4)
         x = hidden4[0]
         x = F.pixel_shuffle(x, 2)
 

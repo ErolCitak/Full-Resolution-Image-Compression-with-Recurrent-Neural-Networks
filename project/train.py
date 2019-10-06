@@ -1,14 +1,14 @@
 from PIL import Image
 from torchvision import transforms
 import torch.nn as nn
-import torch.nn.functional as F
 import torch
 import os
-import tqdm
 from models import Encoder, Decoder, Binarizer
 import numpy as np
+from tensorboardX import SummaryWriter
 
 def train(train_params, args, train_loader, val_loader):
+    writer = SummaryWriter('log/{}'.format(args.model_name))
     encoder = Encoder().to(args.device)
     binarizer = Binarizer().to(args.device)
     decoder = Decoder().to(args.device)
@@ -36,20 +36,24 @@ def train(train_params, args, train_loader, val_loader):
             decoder_h1 = (torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device), torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device))
             decoder_h2 = (torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device), torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
             decoder_h3 = (torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device), torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device))
-            decoder_h4 = (torch.zeros(sample_x.size(0), 128, 128, 138).to(args.device), torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device))
+            decoder_h4 = (torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device), torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device))
 
-            residual = sample_x
             losses = []
             enc_optimizer.zero_grad()
             binarizer_optimizer.zero_grad()
             dec_optimizer.zero_grad()
 
+            residual = sample_x
             for i in range(train_params['iterations']):
-                x, encoder_h1, encoder_h2, encoder_h3 = encoder(sample_x, encoder_h1, encoder_h2, encoder_h3)
+                print('==iteration:', i)
+                # print('input:', residual.shape)
+                x, encoder_h1, encoder_h2, encoder_h3 = encoder(residual, encoder_h1, encoder_h2, encoder_h3)
                 x = binarizer(x)
                 
-                print('Compressed:', x.shape, x.detach().numpy().astype(np.bool).nbytes)
+                # print('\ncompressed:', x.shape, x.detach().numpy().astype(np.bool).nbytes)
+                # print()
                 output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
+                # print('output:', output.shape)
 
                 residual = residual - output
                 losses.append(residual.abs().mean())
@@ -67,14 +71,14 @@ def train(train_params, args, train_loader, val_loader):
             sample_x = sample_x.to(args.device)
             sample_y = sample_y.to(args.device)
 
-            encoder_h1 = (torch.zeros(sample_x.size(0), 256, 8, 8).to(args.device), torch.zeros(sample_x.size(0), 256, 8, 8).to(args.device))
-            encoder_h2 = (torch.zeros(sample_x.size(0), 512, 4, 4).to(args.device), torch.zeros(sample_x.size(0), 512, 4, 4).to(args.device))
-            encoder_h3 = (torch.zeros(sample_x.size(0), 512, 2, 2).to(args.device), torch.zeros(sample_x.size(0), 512, 2, 2).to(args.device))
+            encoder_h1 = (torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device), torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device))
+            encoder_h2 = (torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device), torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
+            encoder_h3 = (torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device), torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device))
 
-            decoder_h1 = (torch.zeros(sample_x.size(0), 512, 2, 2).to(args.device), torch.zeros(sample_x.size(0), 512, 2, 2).to(args.device))
-            decoder_h2 = (torch.zeros(sample_x.size(0), 512, 4, 4).to(args.device), torch.zeros(sample_x.size(0), 512, 4, 4).to(args.device))
-            decoder_h3 = (torch.zeros(sample_x.size(0), 256, 8, 8).to(args.device), torch.zeros(sample_x.size(0), 256, 8, 8).to(args.device))
-            decoder_h4 = (torch.zeros(sample_x.size(0), 128, 16, 16).to(args.device), torch.zeros(sample_x.size(0), 128, 16, 16).to(args.device))
+            decoder_h1 = (torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device), torch.zeros(sample_x.size(0), 512, 16, 16).to(args.device))
+            decoder_h2 = (torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device), torch.zeros(sample_x.size(0), 512, 32, 32).to(args.device))
+            decoder_h3 = (torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device), torch.zeros(sample_x.size(0), 256, 64, 64).to(args.device))
+            decoder_h4 = (torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device), torch.zeros(sample_x.size(0), 128, 128, 128).to(args.device))
 
             x, encoder_h1, encoder_h2, encoder_h3 = encoder(sample_x, encoder_h1, encoder_h2, encoder_h3)
             x = binarizer(x)
@@ -90,6 +94,7 @@ def train(train_params, args, train_loader, val_loader):
             save_models(encoder, binarizer, decoder)
             best_loss = valid_loss
 
+    writer.close()
 
     return enc, binarizer, decoder
 
