@@ -1,11 +1,12 @@
-import argparse
 import os
-import torch
 import sys
+import argparse
+import torch
+from torch.utils.data import DataLoader
 import torchvision.datasets as dataset
 import torchvision.transforms as transforms
 from torchvision.transforms import Resize, ToTensor
-from torch.utils.data import DataLoader
+
 from train import train
 from data import MyCoco
 from models import *
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument("--noise_factor", type=float, default=0.0, help="Number of epochs to train")
     parser.add_argument("--model_name", type=str, default="conv_rnn", help="Weighting of L1 Loss")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate")
-    parser.add_argument("--model_type", type=str, default="srcnn", help="Model type")
+    parser.add_argument("--model_type", type=str, default="conv_rnn", help="Model type")
 
 
 
@@ -52,11 +53,11 @@ if __name__ == '__main__':
         target_transform=target_transform
     )
 
-    lengths = (int(0.1*len(train_dataset_og)), int(0.9*len(train_dataset_og)))
+    lengths = (int(0.9*len(train_dataset_og)), int(0.1*len(train_dataset_og)))
     train_dataset, val_dataset = torch.utils.data.random_split(train_dataset_og, lengths)
     print(f"Train dataset length: {len(train_dataset)}")
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=train_params['batch_size'], pin_memory=train_params['pin_memory'])
     val_loader = DataLoader(val_dataset, shuffle=False, batch_size=train_params['batch_size'], pin_memory=train_params['pin_memory'])
-    encoder, binarizer, decoder = train(train_params, args, train_loader, val_loader)
+    train(train_params, args, train_loader, val_loader)
 
 
