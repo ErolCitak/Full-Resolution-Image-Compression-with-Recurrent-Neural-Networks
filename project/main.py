@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 from torchvision.transforms import Resize, ToTensor
 
 from train import train
-from data import MyCoco
+from data_handler import MyCoco
 from models import *
 
 if __name__ == '__main__':
@@ -39,12 +39,15 @@ if __name__ == '__main__':
     else:
         args.device = torch.device('cpu')
 
+    print(f"device: {args.device}")
+
     train_params = {
         'epochs': args.epochs,
         'lr': args.lr,
         'batch_size': 1,
         'pin_memory': False,
-        'iterations': args.iterations
+        'iterations': args.iterations,
+        'validate': False
     }
 
     print(f"ARGUMENTS: {args}\n")

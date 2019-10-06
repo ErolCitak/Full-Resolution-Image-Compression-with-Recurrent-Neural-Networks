@@ -49,9 +49,9 @@ def train(train_params, args, train_loader, val_loader):
 
     for epoch in range(train_params['epochs']):
         print('== Epoch:', epoch)
+        epoch_loss = 0
         for batch_idx, (sample_x, sample_y) in enumerate(train_loader):
-            print('batch_idx', batch_idx)
-            print('patience', patience)
+            #print(f"batch_idx: {batch_idx}")
             sample_x = sample_x.to(args.device)
             sample_y = sample_y.to(args.device)
 
@@ -85,6 +85,7 @@ def train(train_params, args, train_loader, val_loader):
             )
 
             losses = []
+            #losses = 0
             enc_optimizer.zero_grad()
             binarizer_optimizer.zero_grad()
             dec_optimizer.zero_grad()
@@ -103,9 +104,12 @@ def train(train_params, args, train_loader, val_loader):
                 # print('output:', output.shape)
 
                 residual = residual - output
+                #losses += residual.abs().mean()
                 losses.append(residual.abs().mean())
 
+            #loss = losses/train_params['iterations']
             loss = sum(losses) / train_params['iterations']
+            epoch_loss += loss.item()
             loss.backward()
             enc_optimizer.step()
             dec_optimizer.step()
@@ -117,7 +121,8 @@ def train(train_params, args, train_loader, val_loader):
                 writer.add_image('input_img', img_normalize(sample_x[0]), idx)
                 writer.add_image('recon_img', img_normalize(sample_y[0]), idx)
 
-            if batch_idx % val_interval == 0:
+            #if batch_idx % val_interval == 0 and batch_idx != 0:
+            if batch_idx % val_interval == 0 and train['validate']:
                 val_loss = 0
                 for batch_idx, (sample_x, sample_y) in enumerate(val_loader):
                     sample_x = sample_x.to(args.device)
@@ -157,7 +162,7 @@ def train(train_params, args, train_loader, val_loader):
                     output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(
                         x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
 
-                    val_loss += l1loss(output, sample_x)
+                    val_loss += l1loss(output, sample_x).item()
                 writer.add_scalar('val_loss', val_loss / len(val_loader), idx)
                 writer.flush()
 
@@ -167,6 +172,7 @@ def train(train_params, args, train_loader, val_loader):
                     best_binarizer = copy.deepcopy(binarizer)
                     best_decoder = copy.deepcopy(decoder)
                     save_models(args, best_encoder, best_binarizer, best_decoder)
+                    #save_models(args, encoder, binarizer, decoder)
                     print('Improved: current best_loss on val:{}'.format(best_loss))
                     patience = full_patience
                 else:
@@ -174,8 +180,11 @@ def train(train_params, args, train_loader, val_loader):
                     print('patience', patience)
                     if patience == 0:
                         save_models(args, best_encoder, best_binarizer, best_decoder)
+                        #save_models(args, encoder, binarizer, decoder)
                         print('Early Stopped: Best L1 loss on val:{}'.format(best_loss))
                         writer.close()
                         return
+        print(f"epoch loss: {epoch_loss}")
+
     print('Finished: Best L1 loss on val:{}'.format(best_loss))
     writer.close()
