@@ -122,7 +122,7 @@ def train(train_params, args, train_loader, val_loader):
                 writer.add_image('recon_img', img_normalize(sample_y[0]), idx)
 
             #if batch_idx % val_interval == 0 and batch_idx != 0:
-            if batch_idx % val_interval == 0 and train['validate']:
+            if batch_idx % val_interval == 0 and train_params['validate']:
                 val_loss = 0
                 for batch_idx, (sample_x, sample_y) in enumerate(val_loader):
                     sample_x = sample_x.to(args.device)
