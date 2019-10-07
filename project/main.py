@@ -25,12 +25,14 @@ if __name__ == '__main__':
                         help="Number of iterations for each epoch")
     parser.add_argument("--noise_factor", type=float, default=0.0,
                         help="Number of epochs to train")
-    parser.add_argument("--model_name", type=str, default="conv_rnn",
+    parser.add_argument("--model_name", type=str, default="conv_lstm",
                         help="Weighting of L1 Loss")
     parser.add_argument("--lr", type=float, default=0.001,
                         help="Learning Rate")
-    parser.add_argument("--model_type", type=str, default="conv_rnn",
+    parser.add_argument("--model_type", type=str, default="conv_lstm",
                         help="Model type")
+    parser.add_argument("--percep_weight", type=float, default=0.2,
+                        help="Weighting of Perceptual Loss")
 
     args = parser.parse_args()
 
@@ -38,6 +40,8 @@ if __name__ == '__main__':
         args.device = torch.device('cuda')
     else:
         args.device = torch.device('cpu')
+        print('cuda not available')
+        exit(0)
 
     print(f"device: {args.device}")
 

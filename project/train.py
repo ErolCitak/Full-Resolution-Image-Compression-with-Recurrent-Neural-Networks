@@ -3,12 +3,43 @@ import copy
 import numpy as np
 import torch
 import torch.nn as nn
-from PIL import Image
+import torch.nn.functional as F
 from torchvision import transforms
+from torchvision.models import vgg
 from tensorboardX import SummaryWriter
+from PIL import Image
 
 from models import Encoder, Decoder, Binarizer
 
+
+class PerceptualLossNet(nn.Module):
+    def __init__(self):
+        super(PerceptualLossNet, self).__init__()
+        self.vgg = vgg.vgg16(pretrained=True).features
+        self.layer_map = {
+        "3":"relu1_2",
+        "8":"relu2_2",
+        "15":"relu3_3",
+        "22":"relu4_3"
+        }
+        for param in self.vgg.parameters():
+            param.requires_grad = False
+    def forward(self, x):
+        out = {}
+        for name, module in self.vgg._modules.items():
+            x = module(x)
+            if name in self.layer_map:
+                out[self.layer_map[name]] = x
+        return out
+
+
+def percep_loss(perceptualLossNet, y, y_hat):
+    a_features = perceptualLossNet(y)
+    b_features = perceptualLossNet(y_hat)
+    loss_perceptual = 0.
+    for name in a_features:
+        loss_perceptual += F.mse_loss(a_features[name], b_features[name])
+    return loss_perceptual
 
 def img_normalize(imgs):
     return (imgs+1.0)/2
@@ -36,6 +67,8 @@ def train(train_params, args, train_loader, val_loader):
         binarizer.parameters(), lr=train_params['lr'])
 
     l1loss = torch.nn.L1Loss()
+
+    perceptualLossNet = PerceptualLossNet().to(args.device)
 
     best_loss = float('inf')
     best_encoder, best_binarizer, best_decoder = None, None, None
@@ -103,9 +136,12 @@ def train(train_params, args, train_loader, val_loader):
                     x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
                 # print('output:', output.shape)
 
+                loss_per_iter = \
+                    args.percep_weight * percep_loss(perceptualLossNet, residual, output) + \
+                    (1 - args.percep_weight) * (residual - output).abs().mean()
+                # loss_per_iter = (residual - output).abs().mean()
+                losses.append(loss_per_iter)
                 residual = residual - output
-                #losses += residual.abs().mean()
-                losses.append(residual.abs().mean())
 
             #loss = losses/train_params['iterations']
             loss = sum(losses) / train_params['iterations']
@@ -119,7 +155,7 @@ def train(train_params, args, train_loader, val_loader):
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
                 writer.add_scalar('loss', loss.item(), idx)
                 writer.add_image('input_img', img_normalize(sample_x[0]), idx)
-                writer.add_image('recon_img', img_normalize(sample_y[0]), idx)
+                writer.add_image('recon_img', img_normalize(output[0]), idx)
 
             #if batch_idx % val_interval == 0 and batch_idx != 0:
             if batch_idx % val_interval == 0 and train_params['validate']:
@@ -162,7 +198,10 @@ def train(train_params, args, train_loader, val_loader):
                     output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(
                         x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
 
-                    val_loss += l1loss(output, sample_x).item()
+                    val_loss += \
+                        args.percep_weight * percep_loss(perceptualLossNet, output, sample_x).item() + \
+                        (1 - args.percep_weight) * l1loss(output, sample_x).item()
+                losses.append(loss_per_iter)
                 writer.add_scalar('val_loss', val_loss / len(val_loader), idx)
                 writer.flush()
 
