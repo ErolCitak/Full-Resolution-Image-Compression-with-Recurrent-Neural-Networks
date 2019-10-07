@@ -16,11 +16,11 @@ def img_normalize(imgs):
 
 def save_models(args, encoder, binarizer, decoder):
     torch.save(encoder.state_dict,
-               'save/{model_name}_e'.format(model_name=args.model_name))
+               'weights/encoder.pth'.format(model_name=args.model_name))
     torch.save(binarizer.state_dict,
-               'save/{model_name}_b'.format(model_name=args.model_name))
+               'weights/binarizer.pth'.format(model_name=args.model_name))
     torch.save(decoder.state_dict,
-               'save/{model_name}_d'.format(model_name=args.model_name))
+               'weights/decoder.pth'.format(model_name=args.model_name))
 
 
 def train(train_params, args, train_loader, val_loader):
