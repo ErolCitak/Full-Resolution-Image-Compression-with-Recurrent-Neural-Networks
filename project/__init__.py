@@ -88,7 +88,7 @@ def decode(x, bottleneck):
     bottleneck: an integer from {4096,16384,65536}
     return a 256x256 PIL Image
     """
-    x = np.unpackbits(x, axis=1, count=-(8 - b_outchannel_dim % 8)).astype(np.float32)
+    x = np.unpackbits(x, axis=1, count=-(8 - b_outchannel_dim % 8) % 8).astype(np.float32)
     x = x * 2 - 1
     x = torch.Tensor(x).to(device)
 
