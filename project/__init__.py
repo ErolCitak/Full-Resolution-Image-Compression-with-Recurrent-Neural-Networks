@@ -29,7 +29,7 @@ def encode(img, bottleneck):
 
     codes = binarizer.forward(encoder(x, h1, h2, h3)[0]).detach().numpy().astype(np.int8)
     codes = np.packbits(codes, axis=1)
-    print(f"nbytes: {codes_packed.nbytes}")
+    print(f"nbytes: {codes.nbytes}")
     return codes
     
 def decode(x, bottleneck):
