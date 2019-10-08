@@ -1,6 +1,8 @@
 import numpy as np
-import PIL
-
+from PIL import Image
+import torch
+import torchvision.transforms as transforms
+from torchvision.transforms import Resize, ToTensor, ToPILImage
 
 def encode(img, bottleneck):
     """
@@ -10,9 +12,21 @@ def encode(img, bottleneck):
     return: a numpy array less <= bottleneck bytes
     """
     input_transform = transforms.Compose([Resize((256, 256)), ToTensor()])
-    img_tensor = input_transform(img)
+    x = input_transform(img).unsqueeze(0)
 
-    return binarizer.forward(encoder(img_tensor)).detach().numpy()
+    h1 = (
+        torch.zeros(1, 256, 64, 64),
+        torch.zeros(1, 256, 64, 64)
+    )
+    h2 = (
+        torch.zeros(1, 512, 32, 32),
+        torch.zeros(1, 512, 32, 32))
+    h3 = (
+        torch.zeros(1, 512, 16, 16),
+        torch.zeros(1, 512, 16, 16)
+    )
+
+    return binarizer.forward(encoder(x, h1, h2, h3)[0]).detach().numpy()
     
 def decode(x, bottleneck):
     """
@@ -21,10 +35,28 @@ def decode(x, bottleneck):
     bottleneck: an integer from {4096,16384,65536}
     return a 256x256 PIL Image
     """
-    output = decoder.forward(torch.Tensor(x))
-    output_transform = transforms.Compose([Resize((256, 256)), ToTensor()])
+    h1 = (
+        torch.zeros(1, 512, 16, 16),
+        torch.zeros(1, 512, 16, 16)
+    )
+    h2 = (
+        torch.zeros(1, 512, 32, 32),
+        torch.zeros(1, 512, 32, 32)
+    )
+    h3 = (
+        torch.zeros(1, 256, 64, 64),
+        torch.zeros(1, 256, 64, 64)
+    )
+    h4 = (
+        torch.zeros(1, 128, 128, 128),
+        torch.zeros(1, 128, 128, 128)
+    )
 
-    return output_transform(output)
+    output = decoder.forward(torch.Tensor(x), h1, h2, h3, h4)[0]
+    output = output.squeeze(0)
+    tensor_to_image = transforms.ToPILImage()
+    image = tensor_to_image(output)
+    return image
 
 
 
@@ -42,7 +74,10 @@ binarizer.eval()
 decoder.eval()
 
 # Load model weights here
-encoder.load_state_dict(torch.load('weights/encoder.pth', map_location='cpu'))
-binarizer.load_state_dict(torch.load('weights/binarizer.pth', map_location='cpu'))
-decoder.load_state_dict(torch.load('weights/decoder.pth', map_location='cpu'))
+model_name = 'test'
+encoder.load_state_dict(torch.load('project/{model_name}/{model_name}_e.pth'.format(model_name=model_name), map_location='cpu')['model_state_dict'])
+binarizer.load_state_dict(torch.load('project/{model_name}/{model_name}_b.pth'.format(model_name=model_name), map_location='cpu')['model_state_dict'])
+decoder.load_state_dict(torch.load('project/{model_name}/{model_name}_d.pth'.format(model_name=model_name), map_location='cpu')['model_state_dict'])
 
+
+# testing = decode(encode(Image.open('data/01.jpg').convert('RGB'), 65536), 65536)
