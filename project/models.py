@@ -1,6 +1,15 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
+from signFunc import Sign as SignFunction
+
+
+class Sign(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return SignFunction.apply(x, self.training)
 
 
 class ConvLSTM(nn.Module):
@@ -25,7 +34,7 @@ class ConvLSTM(nn.Module):
         self.tanh = nn.Tanh()
         self.sigmoid = nn.Sigmoid()
         self.gate_channels = 4 * self.hidden_channels
-
+        hidden_padding = self.hidden_kernel_size // 2
         self.convW = nn.Conv2d(
             in_channels=self.in_channels,
             out_channels=self.gate_channels,
@@ -41,9 +50,9 @@ class ConvLSTM(nn.Module):
             out_channels=self.gate_channels,
             kernel_size=self.hidden_kernel_size,
             stride=1,
+            padding=hidden_padding,
             dilation=1,
             bias=self.bias,
-            padding=(self.hidden_kernel_size // 2)
             )
 
     def reset_params(self):
@@ -121,22 +130,23 @@ class Encoder(nn.Module):
 
 
 class Binarizer(nn.Module):
-    def __init__(self, in_channels=512, out_channels=25):
+    def __init__(self):
         super(Binarizer, self).__init__()
         self.Conv = nn.Conv2d(
-            in_channels=in_channels,
-            out_channels=out_channels,
+            in_channels=512,
+            out_channels=32,
             kernel_size=1,
             stride=1,
             padding=0,
             bias=False
             )
         self.tanh = nn.Tanh()
+        self.sign = Sign()
 
     def forward(self, x):
         out = self.Conv(x)
         out = self.tanh(out)
-        return out.sign()
+        return self.sign(out)
 
 
 class Decoder(nn.Module):
@@ -146,7 +156,7 @@ class Decoder(nn.Module):
         self.tanh = nn.Tanh()
 
         self.conv1 = nn.Conv2d(
-            in_channels=25,
+            in_channels=32,
             out_channels=512,
             kernel_size=1,
             stride=1,
@@ -203,8 +213,8 @@ class Decoder(nn.Module):
             )
 
     def forward(self, x, hidden1, hidden2, hidden3, hidden4):
-        out = self.conv1(x)
-        hidden1 = self.ConvLSTM1(out, hidden1)
+        x = self.conv1(x)
+        hidden1 = self.ConvLSTM1(x, hidden1)
         x = hidden1[0]
         x = F.pixel_shuffle(x, 2)
 
@@ -220,5 +230,6 @@ class Decoder(nn.Module):
         x = hidden4[0]
         x = F.pixel_shuffle(x, 2)
 
-        out = self.tanh(self.conv2(x))/2
+        out = self.tanh(self.conv2(x))
+        # out = self.tanh(self.conv2(x)) / 2
         return out, hidden1, hidden2, hidden3, hidden4

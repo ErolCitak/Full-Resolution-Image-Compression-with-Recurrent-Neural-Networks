@@ -4,6 +4,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
+import torch.optim.lr_scheduler as LS
 from torchvision import transforms
 from torchvision.models import vgg
 from tensorboardX import SummaryWriter
@@ -17,10 +19,10 @@ class PerceptualLossNet(nn.Module):
         super(PerceptualLossNet, self).__init__()
         self.vgg = vgg.vgg16(pretrained=True).features
         self.layer_map = {
-        "3":"relu1_2",
-        "8":"relu2_2",
-        "15":"relu3_3",
-        "22":"relu4_3"
+            "3":"relu1_2",
+            "8":"relu2_2",
+            "15":"relu3_3",
+            "22":"relu4_3"
         }
         for param in self.vgg.parameters():
             param.requires_grad = False
@@ -47,11 +49,11 @@ def img_normalize(imgs):
 
 def save_models(args, encoder, binarizer, decoder):
     torch.save(encoder.state_dict,
-               'weights/encoder.pth'.format(model_name=args.model_name))
+               'save/{}_encoder.pth'.format(args.model_name))
     torch.save(binarizer.state_dict,
-               'weights/binarizer.pth'.format(model_name=args.model_name))
+               'save/{}_binarizer.pth'.format(args.model_name))
     torch.save(decoder.state_dict,
-               'weights/decoder.pth'.format(model_name=args.model_name))
+               'save/{}_decoder.pth'.format(args.model_name))
 
 
 def train(train_params, args, train_loader, val_loader):
@@ -59,12 +61,14 @@ def train(train_params, args, train_loader, val_loader):
     binarizer = Binarizer().to(args.device)
     decoder = Decoder().to(args.device)
 
-    enc_optimizer = torch.optim.Adam(
-        encoder.parameters(), lr=train_params['lr'])
-    dec_optimizer = torch.optim.Adam(
-        decoder.parameters(), lr=train_params['lr'])
-    binarizer_optimizer = torch.optim.Adam(
-        binarizer.parameters(), lr=train_params['lr'])
+    optimizer = optim.Adam(
+        [{'params': encoder.parameters()},
+         {'params': binarizer.parameters()},
+         {'params': decoder.parameters()},
+        ],
+        lr=args.lr)
+
+    scheduler = LS.MultiStepLR(optimizer, milestones=[3, 10, 20, 50, 100], gamma=0.5)
 
     l1loss = torch.nn.L1Loss()
 
@@ -76,11 +80,13 @@ def train(train_params, args, train_loader, val_loader):
     patience = full_patience
     batch_size = train_params['batch_size']
     writer = SummaryWriter('log/{}'.format(args.model_name))
-    log_interval = int(len(train_loader) / batch_size * 0.05)
-    val_interval = int(len(train_loader) / batch_size)
+    log_interval = int(len(train_loader) * 0.05)
+    val_interval = len(train_loader)
     print('log_interval:', log_interval, 'val_interval:', val_interval)
 
     for epoch in range(train_params['epochs']):
+        if epoch > 1:
+            scheduler.step()
         print('== Epoch:', epoch)
         epoch_loss = 0
         for batch_idx, (sample_x, sample_y) in enumerate(train_loader):
@@ -119,11 +125,10 @@ def train(train_params, args, train_loader, val_loader):
 
             losses = []
             #losses = 0
-            enc_optimizer.zero_grad()
-            binarizer_optimizer.zero_grad()
-            dec_optimizer.zero_grad()
+            optimizer.zero_grad()
 
             residual = sample_x
+            # residual = sample_x - 0.5
             for i in range(train_params['iterations']):
                 # print('input:', residual.shape)
                 x, encoder_h1, encoder_h2, encoder_h3 = encoder(
@@ -136,25 +141,24 @@ def train(train_params, args, train_loader, val_loader):
                     x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
                 # print('output:', output.shape)
 
-                loss_per_iter = \
-                    args.percep_weight * percep_loss(perceptualLossNet, residual, output) + \
-                    (1 - args.percep_weight) * (residual - output).abs().mean()
-                # loss_per_iter = (residual - output).abs().mean()
+                residual = sample_x - output
+                loss_per_iter = residual.abs().mean()
                 losses.append(loss_per_iter)
-                residual = residual - output
 
-            #loss = losses/train_params['iterations']
             loss = sum(losses) / train_params['iterations']
-            epoch_loss += loss.item()
+
+            if args.percep_weight != 0:
+                loss = args.percep_weight * percep_loss(perceptualLossNet, residual, output) + \
+                    (1 - args.percep_weight) * loss
+
             loss.backward()
-            enc_optimizer.step()
-            dec_optimizer.step()
-            binarizer_optimizer.step()
+            optimizer.step()
+            epoch_loss += loss.item()
 
             if batch_idx % log_interval == 0:
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
                 writer.add_scalar('loss', loss.item(), idx)
-                writer.add_image('input_img', img_normalize(sample_x[0]), idx)
+                writer.add_image('input_img', sample_x[0], idx)
                 writer.add_image('recon_img', img_normalize(output[0]), idx)
 
             #if batch_idx % val_interval == 0 and batch_idx != 0:
@@ -198,9 +202,7 @@ def train(train_params, args, train_loader, val_loader):
                     output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(
                         x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
 
-                    val_loss += \
-                        args.percep_weight * percep_loss(perceptualLossNet, output, sample_x).item() + \
-                        (1 - args.percep_weight) * l1loss(output, sample_x).item()
+                    val_loss += l1loss(output, sample_x).item()
                 losses.append(loss_per_iter)
                 writer.add_scalar('val_loss', val_loss / len(val_loader), idx)
                 writer.flush()
@@ -211,7 +213,6 @@ def train(train_params, args, train_loader, val_loader):
                     best_binarizer = copy.deepcopy(binarizer)
                     best_decoder = copy.deepcopy(decoder)
                     save_models(args, best_encoder, best_binarizer, best_decoder)
-                    #save_models(args, encoder, binarizer, decoder)
                     print('Improved: current best_loss on val:{}'.format(best_loss))
                     patience = full_patience
                 else:
@@ -219,7 +220,6 @@ def train(train_params, args, train_loader, val_loader):
                     print('patience', patience)
                     if patience == 0:
                         save_models(args, best_encoder, best_binarizer, best_decoder)
-                        #save_models(args, encoder, binarizer, decoder)
                         print('Early Stopped: Best L1 loss on val:{}'.format(best_loss))
                         writer.close()
                         return
