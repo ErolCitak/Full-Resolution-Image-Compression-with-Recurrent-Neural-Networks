@@ -28,6 +28,7 @@ def encode(img, bottleneck):
     )
 
     codes = binarizer.forward(encoder(x, h1, h2, h3)[0]).detach().numpy().astype(np.int8)
+    codes = (codes + 1) // 2
     codes = np.packbits(codes, axis=1)
     print(f"nbytes: {codes.nbytes}")
     return codes
@@ -59,9 +60,10 @@ def decode(x, bottleneck):
 
     output = decoder.forward(torch.Tensor(x), h1, h2, h3, h4)[0]
     output = output.squeeze(0)
-    tensor_to_image = transforms.ToPILImage()
-    image = tensor_to_image(output)
-    return image
+    output = output.detach().cpu().numpy().transpose((1,2,0))
+    output = Image.fromarray(np.uint8(output * 255))
+    output.save('reconst.jpg')
+    return output
 
 
 """
