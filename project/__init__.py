@@ -5,6 +5,9 @@ from torchvision.transforms import Resize, ToTensor, ToPILImage
 from PIL import Image
 
 
+use_packed = False
+print(f"use_packed: {use_packed}")
+
 def encode(img, bottleneck):
     """
     Your code here
@@ -28,8 +31,9 @@ def encode(img, bottleneck):
     )
 
     codes = binarizer.forward(encoder(x, h1, h2, h3)[0]).detach().numpy().astype(np.int8)
-    codes = (codes + 1) // 2
-    codes = np.packbits(codes, axis=1)
+    if use_packed:
+        codes = (codes + 1) // 2
+        codes = np.packbits(codes, axis=1)
     print(f"nbytes: {codes.nbytes}")
     return codes
     
@@ -40,7 +44,8 @@ def decode(x, bottleneck):
     bottleneck: an integer from {4096,16384,65536}
     return a 256x256 PIL Image
     """
-    x = np.unpackbits(x, axis=1)
+    if use_packed:
+        x = np.unpackbits(x, axis=1)
     h1 = (
         torch.zeros(1, 512, 16, 16),
         torch.zeros(1, 512, 16, 16)
