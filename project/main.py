@@ -47,7 +47,7 @@ if __name__ == '__main__':
         'batch_size': 1,
         'pin_memory': False,
         'iterations': args.iterations,
-        'validate': False
+        'validate': True
     }
 
     print(f"ARGUMENTS: {args}\n")

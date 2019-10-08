@@ -121,7 +121,7 @@ class Encoder(nn.Module):
 
 
 class Binarizer(nn.Module):
-    def __init__(self, in_channels=512, out_channels=25):
+    def __init__(self, in_channels=512, out_channels=32):
         super(Binarizer, self).__init__()
         self.Conv = nn.Conv2d(
             in_channels=in_channels,
@@ -144,9 +144,10 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
 
         self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
 
         self.conv1 = nn.Conv2d(
-            in_channels=25,
+            in_channels=32,
             out_channels=512,
             kernel_size=1,
             stride=1,
@@ -220,5 +221,7 @@ class Decoder(nn.Module):
         x = hidden4[0]
         x = F.pixel_shuffle(x, 2)
 
-        out = self.tanh(self.conv2(x))/2
+        #out = self.tanh(self.conv2(x))
+        #out = (out+1)/2
+        out = self.sigmoid(self.conv2(x))
         return out, hidden1, hidden2, hidden3, hidden4
