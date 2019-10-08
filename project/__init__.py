@@ -10,6 +10,8 @@ b_outchannel_dim = 125
 # Number of iterations for encoding
 n_iterations = 16
 
+model_name = 'crnn_sig_lr001_125'
+
 if torch.cuda.is_available():
     device = torch.device('cuda')
 else:
@@ -108,7 +110,6 @@ binarizer = Binarizer().to(device)
 decoder = Decoder().to(device)
 
 # Load model weights here
-model_name = 'crnn_sig_lr001_125'
 if torch.cuda.is_available():
     encoder.load_state_dict(
         torch.load('project/save/{}_e.pth'.format(model_name))['model_state_dict'])
