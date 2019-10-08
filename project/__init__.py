@@ -5,7 +5,8 @@ from torchvision.transforms import Resize, ToTensor, ToPILImage
 from PIL import Image
 
 
-use_packed = False
+use_packed = True
+b_outchannel_dim = 125
 print(f"use_packed: {use_packed}")
 
 def encode(img, bottleneck):
@@ -30,7 +31,8 @@ def encode(img, bottleneck):
         torch.zeros(1, 512, 16, 16)
     )
 
-    codes = binarizer.forward(encoder(x, h1, h2, h3)[0]).detach().numpy().astype(np.int8)
+    codes = binarizer.forward(encoder(x, h1, h2, h3)[0]).detach().numpy()
+    codes = codes.astype(np.int8)
     if use_packed:
         codes = (codes + 1) // 2
         codes = np.packbits(codes, axis=1)
@@ -45,7 +47,10 @@ def decode(x, bottleneck):
     return a 256x256 PIL Image
     """
     if use_packed:
-        x = np.unpackbits(x, axis=1)
+        x = np.unpackbits(x, axis=1, count=-(8 - b_outchannel_dim % 8))
+        x = x.astype(np.float32)
+        x = x * 2 - 1
+
     h1 = (
         torch.zeros(1, 512, 16, 16),
         torch.zeros(1, 512, 16, 16)
@@ -85,7 +90,7 @@ binarizer.eval()
 decoder.eval()
 
 # Load model weights here
-model_name = 'clstm_sigmoid_stochastic_scheduler'
+model_name = 'crnn_sig_lr001_125'
 encoder.load_state_dict(torch.load('project/save/{model_name}_e.pth'.format(model_name=model_name), map_location='cpu')['model_state_dict'])
 binarizer.load_state_dict(torch.load('project/save/{model_name}_b.pth'.format(model_name=model_name), map_location='cpu')['model_state_dict'])
 decoder.load_state_dict(torch.load('project/save/{model_name}_d.pth'.format(model_name=model_name), map_location='cpu')['model_state_dict'])
