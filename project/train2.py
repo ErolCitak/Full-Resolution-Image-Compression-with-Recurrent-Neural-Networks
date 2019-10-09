@@ -38,9 +38,9 @@ def save_models(args, encoder, binarizer, decoder, epoch, enc_optimizer, dec_opt
 
 
 def train(train_params, args, train_loader, val_loader):
-    encoder = Encoder(args.size).to(args.device)
+    encoder = Encoder(args.size, train_params['batch_size']).to(args.device)
     binarizer = Binarizer(args.stochastic).to(args.device)
-    decoder = Decoder(args.size).to(args.device)
+    decoder = Decoder(args.size, train_params['batch_size']).to(args.device)
 
     enc_optimizer = torch.optim.Adam(
         encoder.parameters(), lr=train_params['lr'])
@@ -72,17 +72,17 @@ def train(train_params, args, train_loader, val_loader):
         epoch_loss = 0
         curr_loss = 0
         for batch_idx, (sample_x, sample_y) in enumerate(train_loader):
-            #print(f"batch_idx: {batch_idx}")
+            print(f"batch_idx: {batch_idx}")
             sample_x = sample_x.to(args.device)
             sample_y = sample_y.to(args.device)
+
+            encoder.init_hidden(args)
+            decoder.init_hidden(args)
 
             losses = []
             enc_optimizer.zero_grad()
             binarizer_optimizer.zero_grad()
             dec_optimizer.zero_grad()
-
-            encoder.init_hidden(args)
-            decoder.init_hidden(args)
 
             residual = sample_x
             for i in range(train_params['iterations']):
@@ -90,7 +90,7 @@ def train(train_params, args, train_loader, val_loader):
 
                 x = encoder(residual)
                 x = binarizer(x)
-                print(f"code shape: {x.shape}")
+                #print(f"code shape: {x.shape}")
                 # nbytes = x.detach().numpy().astype(np.bool).nbytes
                 # print('\ncompressed:', x.shape, n_bytes)
                 # print()
@@ -134,9 +134,6 @@ def train(train_params, args, train_loader, val_loader):
 
                 if best_loss > val_loss:
                     best_loss = val_loss
-                    best_encoder = copy.deepcopy(encoder)
-                    best_binarizer = copy.deepcopy(binarizer)
-                    best_decoder = copy.deepcopy(decoder)
                     save_models(args,
                         encoder,
                         binarizer,
@@ -152,15 +149,6 @@ def train(train_params, args, train_loader, val_loader):
                     patience -= 1
                     print('patience', patience)
                     if patience == 0:
-                        save_models(args,
-                            best_encoder,
-                            best_binarizer,
-                            best_decoder,
-                            epoch,
-                            enc_optimizer,
-                            dec_optimizer,
-                            binarizer_optimizer,
-                            loss)
                         print('Early Stopped: Best L1 loss on val:{}'.format(best_loss))
                         writer.close()
                         return

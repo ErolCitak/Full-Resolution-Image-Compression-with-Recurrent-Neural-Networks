@@ -7,9 +7,9 @@ import torchvision.datasets as dataset
 import torchvision.transforms as transforms
 from torchvision.transforms import Resize, ToTensor
 
-from train import train
+from train2 import train
 from data_handler import MyCoco
-from models import *
+from models2 import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -33,6 +33,8 @@ if __name__ == '__main__':
                         help="Model type")
     parser.add_argument("--stochastic", action="store_true",
                         help="Use stochastic binarizer")
+    parser.add_argument("--size", type=int, default=256,
+                            help="Spatial width and height of image")
 
     args = parser.parse_args()
 
@@ -46,7 +48,7 @@ if __name__ == '__main__':
     train_params = {
         'epochs': args.epochs,
         'lr': args.lr,
-        'batch_size': 1,
+        'batch_size': 4,
         'pin_memory': False,
         'iterations': args.iterations,
         'validate': True
@@ -55,8 +57,8 @@ if __name__ == '__main__':
     print(f"ARGUMENTS: {args}\n")
     print(f"TRAIN PARAMS: {train_params}\n")
 
-    target_transform = transforms.Compose([Resize((256, 256)), ToTensor()])
-    input_transform = transforms.Compose([Resize((256, 256)), ToTensor()])
+    target_transform = transforms.Compose([Resize((args.size, args.size)), ToTensor()])
+    input_transform = transforms.Compose([Resize((args.size, args.size)), ToTensor()])
 
     train_dataset_og = MyCoco(
         root=args.train_images,
