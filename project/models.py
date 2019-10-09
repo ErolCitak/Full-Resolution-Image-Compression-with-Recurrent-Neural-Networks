@@ -1,6 +1,42 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
+from torch.autograd import Function
+
+
+class SignFunction(Function):
+    """
+    Variable Rate Image Compression with Recurrent Neural Networks
+    https://arxiv.org/abs/1511.06085
+    """
+
+    def __init__(self):
+        super(SignFunction, self).__init__()
+
+    @staticmethod
+    def forward(ctx, input, is_training=True):
+        # Apply quantization noise while only training
+        if is_training:
+            prob = input.new(input.size()).uniform_()
+            x = input.clone()
+            x[(1 - input) / 2 <= prob] = 1
+            x[(1 - input) / 2 > prob] = -1
+            return x
+        else:
+            return input.sign()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        return grad_output, None
+
+
+class Sign(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return SignFunction.apply(x, self.training)
 
 
 class ConvLSTM(nn.Module):
@@ -121,22 +157,29 @@ class Encoder(nn.Module):
 
 
 class Binarizer(nn.Module):
-    def __init__(self, in_channels=512, out_channels=32):
+    def __init__(self, stochastic=False):
         super(Binarizer, self).__init__()
         self.Conv = nn.Conv2d(
-            in_channels=in_channels,
-            out_channels=out_channels,
+            in_channels=512,
+            out_channels=32,
             kernel_size=1,
             stride=1,
             padding=0,
             bias=False
             )
         self.tanh = nn.Tanh()
+        self.stochastic = stochastic
+        if self.stochastic:
+            self.sign = Sign()
 
     def forward(self, x):
         out = self.Conv(x)
         out = self.tanh(out)
-        return out.sign()
+        if self.stochastic:
+            out = self.sign(out)
+        else:
+            out = out.sign()
+        return out
 
 
 class Decoder(nn.Module):

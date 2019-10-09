@@ -3,6 +3,7 @@ import copy
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim.lr_scheduler as LS
 from PIL import Image
 from torchvision import transforms
 from tensorboardX import SummaryWriter
@@ -70,7 +71,7 @@ def save_models(args, encoder, binarizer, decoder, epoch, enc_optimizer, dec_opt
 
 def train(train_params, args, train_loader, val_loader):
     encoder = Encoder().to(args.device)
-    binarizer = Binarizer().to(args.device)
+    binarizer = Binarizer(args.stochastic).to(args.device)
     decoder = Decoder().to(args.device)
 
     enc_optimizer = torch.optim.Adam(
@@ -79,6 +80,12 @@ def train(train_params, args, train_loader, val_loader):
         decoder.parameters(), lr=train_params['lr'])
     binarizer_optimizer = torch.optim.Adam(
         binarizer.parameters(), lr=train_params['lr'])
+    enc_scheduler = LS.MultiStepLR(
+        enc_optimizer, milestones=[3, 10, 20, 50, 100], gamma=0.5)
+    dec_scheduler = LS.MultiStepLR(
+        dec_optimizer, milestones=[3, 10, 20, 50, 100], gamma=0.5)
+    binarizer_scheduler = LS.MultiStepLR(
+        binarizer_optimizer, milestones=[3, 10, 20, 50, 100], gamma=0.5)
 
     l1loss = torch.nn.L1Loss()
 
@@ -197,6 +204,9 @@ def train(train_params, args, train_loader, val_loader):
                         return
         print(f"epoch loss: {epoch_loss}")
         writer.add_scalar('epoch loss', epoch_loss, epoch)
+        enc_scheduler.step()
+        dec_scheduler.step()
+        binarizer_scheduler.step()
 
     print('Finished: Best L1 loss on val:{}'.format(best_loss))
     writer.close()

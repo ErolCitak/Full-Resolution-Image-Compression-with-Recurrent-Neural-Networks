@@ -31,6 +31,8 @@ if __name__ == '__main__':
                         help="Learning Rate")
     parser.add_argument("--model_type", type=str, default="conv_rnn",
                         help="Model type")
+    parser.add_argument("--stochastic", action="store_true",
+                        help="Use stochastic binarizer")
 
     args = parser.parse_args()
 
