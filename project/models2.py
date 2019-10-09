@@ -92,10 +92,10 @@ class ConvLSTM(nn.Module):
         self.convW.reset_parameters()
         self.convU.reset_parameters()
 
-    def init_hidden(self, args):
+    def init_hidden(self, device):
         self.hidden = (
-            torch.zeros(self.batch_size, self.hidden_channels, self.space_dim, self.space_dim).to(args.device),
-            torch.zeros(self.batch_size, self.hidden_channels, self.space_dim, self.space_dim).to(args.device)
+            torch.zeros(self.batch_size, self.hidden_channels, self.space_dim, self.space_dim).to(device),
+            torch.zeros(self.batch_size, self.hidden_channels, self.space_dim, self.space_dim).to(device)
         )
 
     def forward(self, x):
@@ -168,10 +168,10 @@ class Encoder(nn.Module):
             bias=False
             )
 
-    def init_hidden(self, args):
-        self.ConvLSTM1.init_hidden(args)
-        self.ConvLSTM2.init_hidden(args)
-        self.ConvLSTM3.init_hidden(args)
+    def init_hidden(self, device):
+        self.ConvLSTM1.init_hidden(device)
+        self.ConvLSTM2.init_hidden(device)
+        self.ConvLSTM3.init_hidden(device)
 
     def forward(self, x):
         out = self.conv(x)
@@ -279,11 +279,11 @@ class Decoder(nn.Module):
             bias=False
             )
 
-    def init_hidden(self, args):
-        self.ConvLSTM1.init_hidden(args)
-        self.ConvLSTM2.init_hidden(args)
-        self.ConvLSTM3.init_hidden(args)
-        self.ConvLSTM4.init_hidden(args)
+    def init_hidden(self, device):
+        self.ConvLSTM1.init_hidden(device)
+        self.ConvLSTM2.init_hidden(device)
+        self.ConvLSTM3.init_hidden(device)
+        self.ConvLSTM4.init_hidden(device)
 
     def forward(self, x):
         out = self.conv1(x)

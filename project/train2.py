@@ -76,8 +76,8 @@ def train(train_params, args, train_loader, val_loader):
             sample_x = sample_x.to(args.device)
             sample_y = sample_y.to(args.device)
 
-            encoder.init_hidden(args)
-            decoder.init_hidden(args)
+            encoder.init_hidden(args.device)
+            decoder.init_hidden(args.device)
 
             losses = []
             enc_optimizer.zero_grad()
@@ -121,8 +121,8 @@ def train(train_params, args, train_loader, val_loader):
                     sample_x = sample_x.to(args.device)
                     sample_y = sample_y.to(args.device)
 
-                    encoder.init_hidden(args)
-                    decoder.init_hidden(args)
+                    encoder.init_hidden(args.device)
+                    decoder.init_hidden(args.device)
 
                     x = encoder(sample_x)
                     x = binarizer(x)
