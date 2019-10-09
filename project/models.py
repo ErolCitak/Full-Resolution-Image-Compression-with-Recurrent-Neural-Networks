@@ -221,7 +221,7 @@ class Decoder(nn.Module):
         x = hidden4[0]
         x = F.pixel_shuffle(x, 2)
 
-        #out = self.tanh(self.conv2(x))
-        #out = (out+1)/2
-        out = self.sigmoid(self.conv2(x))
+        out = self.tanh(self.conv2(x))
+        out = (out+1)/2
+        #out = self.sigmoid(self.conv2(x))
         return out, hidden1, hidden2, hidden3, hidden4

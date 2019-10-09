@@ -115,6 +115,7 @@ def train(train_params, args, train_loader, val_loader):
                 x, encoder_h1, encoder_h2, encoder_h3 = encoder(
                     residual, encoder_h1, encoder_h2, encoder_h3)
                 x = binarizer(x)
+                print(f"code shape: {x.shape}")
                 # nbytes = x.detach().numpy().astype(np.bool).nbytes
                 # print('\ncompressed:', x.shape, n_bytes)
                 # print()
