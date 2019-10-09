@@ -33,6 +33,8 @@ if __name__ == '__main__':
                         help="Model type")
     parser.add_argument("--stochastic", action="store_true",
                         help="Use stochastic binarizer")
+    parser.add_argument("--additive", action="store_true",
+                        help="Use additive method")
 
     args = parser.parse_args()
 

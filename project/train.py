@@ -11,6 +11,41 @@ from tensorboardX import SummaryWriter
 from models import Encoder, Decoder, Binarizer
 
 
+def inference(args, encoder, binarizer, decoder, sample_x):
+    sample_x = torch.unsqueeze(sample_x, 0)
+    encoder_h1, encoder_h2, encoder_h3, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = \
+        get_hidden_layers(args, sample_x)
+    codes = []
+    residual = sample_x
+    for i in range(args.iterations):
+        x, encoder_h1, encoder_h2, encoder_h3 = encoder(
+            residual, encoder_h1, encoder_h2, encoder_h3)
+        code = binarizer(x)
+        output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(
+            code, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
+        residual = residual - output
+        codes.append(code.data.cpu().numpy())
+
+    codes = (np.stack(codes).astype(np.int8) + 1) // 2
+    shape = codes.shape
+    export = np.packbits(codes.reshape(-1))
+    print(f"nbytes: {export.nbytes}")
+    # np.savez_compressed(args.output, shape=codes.shape, codes=export)
+
+    encoder_h1, encoder_h2, encoder_h3, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = \
+        get_hidden_layers(args, sample_x)
+    codes = np.unpackbits(export).astype(np.float32)
+    codes = np.reshape(codes, shape)
+    codes = codes * 2 - 1
+    codes = torch.Tensor(codes).to(args.device)
+    reconst_img = torch.zeros(1, 3, 256, 256)
+    for iters in range(args.iterations):
+        output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(
+            codes[iters], decoder_h1, decoder_h2, decoder_h3, decoder_h4)
+        reconst_img = reconst_img + output.data.cpu()
+    reconst_img = reconst_img.squeeze(0)
+    return reconst_img
+
 def img_normalize(imgs):
     return (imgs+1.0)/2
 
@@ -118,23 +153,18 @@ def train(train_params, args, train_loader, val_loader):
 
             residual = sample_x
             for i in range(train_params['iterations']):
-                # print('input:', residual.shape)
                 x, encoder_h1, encoder_h2, encoder_h3 = encoder(
                     residual, encoder_h1, encoder_h2, encoder_h3)
                 x = binarizer(x)
-                # nbytes = x.detach().numpy().astype(np.bool).nbytes
-                # print('\ncompressed:', x.shape, n_bytes)
-                # print()
                 output, decoder_h1, decoder_h2, decoder_h3, decoder_h4 = decoder(
                     x, decoder_h1, decoder_h2, decoder_h3, decoder_h4)
-                # print('output:', output.shape)
 
-                residual = sample_x - output
-                #residual = residual - output
-                #losses += residual.abs().mean()
+                if args.additive:
+                    residual = residual - output
+                else:
+                    residual = sample_x - output
                 losses.append(residual.abs().mean())
 
-            #loss = losses/train_params['iterations']
             loss = sum(losses) / train_params['iterations']
             epoch_loss += loss.item()
             loss.backward()
@@ -146,11 +176,15 @@ def train(train_params, args, train_loader, val_loader):
                 idx = epoch * int(len(train_loader.dataset) / batch_size) + batch_idx
                 writer.add_scalar('loss', loss.item(), idx)
                 writer.add_image('input_img', sample_x[0], idx)
-                writer.add_image('recon_img', output[0], idx)
+                if args.additive:
+                    writer.add_image(
+                        'recon_img',
+                        inference(args, encoder, binarizer, decoder, sample_x[0]), idx)
+                else:
+                    writer.add_image('recon_img', output[0], idx)
                 #writer.add_image('recon_img', img_normalize(output[0]), idx)
                 curr_loss = 0
 
-            #if batch_idx % val_interval == 0 and batch_idx != 0:
             if batch_idx % val_interval == 0 and train_params['validate']:
                 val_loss = 0
                 for batch_idx, (sample_x, sample_y) in enumerate(val_loader):
@@ -181,7 +215,6 @@ def train(train_params, args, train_loader, val_loader):
                         dec_optimizer,
                         binarizer_optimizer,
                         loss)
-                    #save_models(args, encoder, binarizer, decoder)
                     print('Improved: current best_loss on val:{}'.format(best_loss))
                     patience = full_patience
                 else:
@@ -197,7 +230,6 @@ def train(train_params, args, train_loader, val_loader):
                             dec_optimizer,
                             binarizer_optimizer,
                             loss)
-                        #save_models(args, encoder, binarizer, decoder)
                         print('Early Stopped: Best L1 loss on val:{}'.format(best_loss))
                         writer.close()
                         return
