@@ -39,8 +39,8 @@ def save_models(args, encoder, binarizer, decoder, epoch, enc_optimizer, dec_opt
 
 def train(train_params, args, train_loader, val_loader):
     encoder = Encoder(args.size, train_params['batch_size']).to(args.device)
-    binarizer = Binarizer(args.stochastic).to(args.device)
-    decoder = Decoder(args.size, train_params['batch_size']).to(args.device)
+    binarizer = Binarizer(args.out_channels_b, args.stochastic).to(args.device)
+    decoder = Decoder(args.size, train_params['batch_size'], args.out_channels_b).to(args.device)
 
     enc_optimizer = torch.optim.Adam(
         encoder.parameters(), lr=train_params['lr'])

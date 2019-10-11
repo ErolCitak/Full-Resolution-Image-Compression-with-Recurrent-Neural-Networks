@@ -37,6 +37,8 @@ if __name__ == '__main__':
                         help="Use additive method")
     parser.add_argument("--size", type=int, default=256,
                             help="Spatial width and height of image")
+    parser.add_argument("--out_channels_b", type=int, default=256,
+                            help="Number of output channels for conv inside binarizer")
 
     args = parser.parse_args()
 
@@ -50,7 +52,7 @@ if __name__ == '__main__':
     train_params = {
         'epochs': args.epochs,
         'lr': args.lr,
-        'batch_size': 4,
+        'batch_size': 1,
         'pin_memory': False,
         'iterations': args.iterations,
         'validate': True
@@ -70,7 +72,7 @@ if __name__ == '__main__':
         target_transform=target_transform
     )
 
-    lengths = (int(0.1*len(train_dataset_og)), int(0.9*len(train_dataset_og)))
+    lengths = (int(0.2*len(train_dataset_og)), int(0.8*len(train_dataset_og)))
     train_dataset, val_dataset = torch.utils.data.random_split(
         train_dataset_og, lengths)
     print(f"Train dataset length: {len(train_dataset)}")

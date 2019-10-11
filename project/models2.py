@@ -182,11 +182,11 @@ class Encoder(nn.Module):
 
 
 class Binarizer(nn.Module):
-    def __init__(self, stochastic=False):
+    def __init__(self, out_channels_b, stochastic=False):
         super(Binarizer, self).__init__()
         self.Conv = nn.Conv2d(
             in_channels=512,
-            out_channels=32,
+            out_channels=out_channels_b,
             kernel_size=1,
             stride=1,
             padding=0,
@@ -208,14 +208,13 @@ class Binarizer(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, space_dim, batch_size):
+    def __init__(self, space_dim, batch_size, out_channels_b):
         super(Decoder, self).__init__()
-
         self.tanh = nn.Tanh()
         self.sigmoid = nn.Sigmoid()
 
         self.conv1 = nn.Conv2d(
-            in_channels=32,
+            in_channels=out_channels_b,
             out_channels=512,
             kernel_size=1,
             stride=1,
